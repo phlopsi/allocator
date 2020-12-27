@@ -53,3 +53,9 @@ impl<T> DerefMut for Box<'_, T> {
         }
     }
 }
+
+impl<T> Drop for Box<'_, T> {
+    fn drop(&mut self) {
+        *self.inner = None;
+    }
+}
