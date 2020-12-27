@@ -44,3 +44,12 @@ impl<T> Deref for Box<'_, T> {
         }
     }
 }
+
+impl<T> DerefMut for Box<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        match self.inner.deref_mut() {
+            Some(value) => value,
+            None => unreachable!(),
+        }
+    }
+}
