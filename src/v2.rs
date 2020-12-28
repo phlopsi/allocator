@@ -42,10 +42,6 @@ impl<T> Allocator<T> {
         storage.push(Slot::new(INVALID_INDEX));
         let storage = storage.into_boxed_slice();
         debug_assert!(capacity == storage.len());
-        debug_assert!(matches!(
-            *storage.last().unwrap().inner.lock().unwrap(),
-            SlotInner::Empty(INVALID_INDEX)
-        ));
 
         Self {
             storage,
@@ -111,7 +107,11 @@ impl<T> DerefMut for Box<'_, T> {
 
 impl<T> Drop for Box<'_, T> {
     fn drop(&mut self) {
-        let mut free_guard = self.free.lock().unwrap();
+        let mut free_guard = match self.free.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+
         *self.inner = SlotInner::Empty(*free_guard);
         *free_guard = self.index;
         self.free_guard = Some(free_guard);
