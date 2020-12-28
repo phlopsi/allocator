@@ -51,31 +51,28 @@ impl<T> Allocator<T> {
 
     #[track_caller]
     pub fn box_it(&self, value: T) -> Box<'_, T> {
-        let mut free_guard = self.free.lock().unwrap();
+        let Self { storage, free } = &self;
+        let mut free_guard = free.lock().unwrap();
+        let index = *free_guard;
 
-        assert_ne!(
-            INVALID_INDEX, *free_guard,
-            "out of reserved memory"
-        );
+        assert_ne!(INVALID_INDEX, index, "out of reserved memory");
 
-        let mut slot_guard = self.storage[*free_guard as usize]
-            .inner
-            .try_lock()
-            .unwrap();
+        let mut slot_guard =
+            storage[index as usize].inner.try_lock().unwrap();
 
-        let next_free_slot_index: isize = match slot_guard.deref() {
+        let next_free = match slot_guard.deref() {
             SlotInner::Empty(n) => *n,
             SlotInner::Filled(_) => unreachable!(),
         };
 
-        *free_guard = next_free_slot_index;
+        *free_guard = next_free;
         std::mem::drop(free_guard);
         *slot_guard = SlotInner::Filled(value);
 
         Box {
-            free: &self.free,
+            free,
             free_guard: None,
-            index: next_free_slot_index,
+            index,
             inner: slot_guard,
         }
     }
