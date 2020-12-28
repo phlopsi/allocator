@@ -42,6 +42,10 @@ impl<T> Allocator<T> {
         storage.push(Slot::new(INVALID_INDEX));
         let storage = storage.into_boxed_slice();
         debug_assert!(capacity == storage.len());
+        debug_assert!(matches!(
+            *storage.last().unwrap().inner.lock().unwrap(),
+            SlotInner::Empty(INVALID_INDEX)
+        ));
 
         Self {
             storage,
