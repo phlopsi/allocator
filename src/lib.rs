@@ -17,12 +17,13 @@ impl<T> Allocator<T> {
         }
     }
 
+    #[track_caller]
     pub fn box_it(&self, value: T) -> Box<'_, T> {
         let mut guard = self
             .storage
             .iter()
             .find_map(|mutex| mutex.try_lock().ok())
-            .unwrap();
+            .expect("out of reserved memory");
 
         *guard = Some(value);
 
