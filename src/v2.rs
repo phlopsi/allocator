@@ -75,7 +75,7 @@ impl<T> Allocator<T> {
         Box {
             free: &self.free,
             free_guard: None,
-            index: next_free_slot_index as usize,
+            index: next_free_slot_index,
             inner: slot_guard,
         }
     }
@@ -85,7 +85,7 @@ pub struct Box<'a, T> {
     inner: MutexGuard<'a, SlotInner<T>>,
     free_guard: Option<MutexGuard<'a, isize>>,
     free: &'a Mutex<isize>,
-    index: usize,
+    index: isize,
 }
 
 impl<T> Deref for Box<'_, T> {
@@ -110,8 +110,9 @@ impl<T> DerefMut for Box<'_, T> {
 
 impl<T> Drop for Box<'_, T> {
     fn drop(&mut self) {
-        let free_guard = self.free.lock().unwrap();
+        let mut free_guard = self.free.lock().unwrap();
         *self.inner = SlotInner::Empty(*free_guard);
+        *free_guard = self.index;
         self.free_guard = Some(free_guard);
     }
 }
