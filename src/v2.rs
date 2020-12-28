@@ -6,36 +6,86 @@ use std::ops::DerefMut;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
+const INVALID_INDEX: isize = -1;
+
+enum SlotInner<T> {
+    Filled(T),
+    Empty(isize),
+}
+
+struct Slot<T> {
+    inner: Mutex<SlotInner<T>>,
+}
+
+impl<T> Slot<T> {
+    fn new(next_free_slot_index: isize) -> Self {
+        Self {
+            inner: Mutex::new(SlotInner::Empty(next_free_slot_index)),
+        }
+    }
+}
+
 pub struct Allocator<T> {
-    storage: std::boxed::Box<[Mutex<Option<T>>]>,
+    storage: std::boxed::Box<[Slot<T>]>,
+    free: Mutex<isize>,
 }
 
 impl<T> Allocator<T> {
     pub fn new(capacity: usize) -> Self {
+        assert!(1 <= capacity, capacity <= (isize::MAX as usize));
         let mut storage = Vec::with_capacity(capacity);
-        storage.resize_with(capacity, Default::default);
+
+        for next_free_slot_index in 1..capacity {
+            storage.push(Slot::new(next_free_slot_index as isize))
+        }
+
+        storage.push(Slot::new(INVALID_INDEX));
+        let storage = storage.into_boxed_slice();
+        debug_assert!(capacity == storage.len());
 
         Self {
-            storage: storage.into_boxed_slice(),
+            storage,
+            free: Mutex::new(0),
         }
     }
 
     #[track_caller]
     pub fn box_it(&self, value: T) -> Box<'_, T> {
-        let mut guard = self
-            .storage
-            .iter()
-            .find_map(|mutex| mutex.try_lock().ok())
-            .expect("out of reserved memory");
+        let mut free_guard = self.free.lock().unwrap();
 
-        *guard = Some(value);
+        assert_ne!(
+            INVALID_INDEX, *free_guard,
+            "out of reserved memory"
+        );
 
-        Box { inner: guard }
+        let mut slot_guard = self.storage[*free_guard as usize]
+            .inner
+            .try_lock()
+            .unwrap();
+
+        let next_free_slot_index: isize = match slot_guard.deref() {
+            SlotInner::Empty(n) => *n,
+            SlotInner::Filled(_) => unreachable!(),
+        };
+
+        *free_guard = next_free_slot_index;
+        std::mem::drop(free_guard);
+        *slot_guard = SlotInner::Filled(value);
+
+        Box {
+            free: &self.free,
+            free_guard: None,
+            index: next_free_slot_index as usize,
+            inner: slot_guard,
+        }
     }
 }
 
 pub struct Box<'a, T> {
-    inner: MutexGuard<'a, Option<T>>,
+    inner: MutexGuard<'a, SlotInner<T>>,
+    free_guard: Option<MutexGuard<'a, isize>>,
+    free: &'a Mutex<isize>,
+    index: usize,
 }
 
 impl<T> Deref for Box<'_, T> {
@@ -43,8 +93,8 @@ impl<T> Deref for Box<'_, T> {
 
     fn deref(&self) -> &T {
         match self.inner.deref() {
-            Some(value) => value,
-            None => unreachable!(),
+            SlotInner::Filled(value) => value,
+            SlotInner::Empty(_) => unreachable!(),
         }
     }
 }
@@ -52,14 +102,16 @@ impl<T> Deref for Box<'_, T> {
 impl<T> DerefMut for Box<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         match self.inner.deref_mut() {
-            Some(value) => value,
-            None => unreachable!(),
+            SlotInner::Filled(value) => value,
+            SlotInner::Empty(_) => unreachable!(),
         }
     }
 }
 
 impl<T> Drop for Box<'_, T> {
     fn drop(&mut self) {
-        *self.inner = None;
+        let free_guard = self.free.lock().unwrap();
+        *self.inner = SlotInner::Empty(*free_guard);
+        self.free_guard = Some(free_guard);
     }
 }
