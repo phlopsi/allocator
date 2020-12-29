@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 simple-mutex = "*"
 parking_lot = "*"
+antidote = "*"
 
 [dev-dependencies]
 criterion = "*"
