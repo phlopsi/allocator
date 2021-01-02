@@ -55,15 +55,24 @@ impl<T> Allocator<T> {
         let Self { storage, free } = &self;
         let mut index;
         let mut slot_guard;
+        let mut count = 0;
 
         loop {
             index = free.load(SeqCst);
             assert_ne!(INVALID_INDEX, index, "out of reserved memory");
 
-            if let Ok(guard) = storage[index as usize].inner.try_lock()
-            {
-                slot_guard = guard;
-                break;
+            match storage[index as usize].inner.try_lock() {
+                Ok(guard) => {
+                    slot_guard = guard;
+                    break;
+                }
+                Err(std::sync::TryLockError::WouldBlock) => {
+                    count += 1;
+                    assert!(count < 100);
+                }
+                Err(std::sync::TryLockError::Poisoned(e)) => {
+                    panic!("{}", e)
+                }
             }
         }
 

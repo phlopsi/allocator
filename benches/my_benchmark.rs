@@ -373,7 +373,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             });
 
             b.iter(|| {
-                (
+                std::mem::drop((
                     a.box_it(3),
                     a.box_it(4),
                     a.box_it(5),
@@ -388,7 +388,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     a.box_it(14),
                     a.box_it(15),
                     a.box_it(16),
-                )
+                ));
             });
 
             repeat.store(false, Release);
