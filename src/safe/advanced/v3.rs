@@ -3,6 +3,7 @@ mod tests;
 
 use std::ops::Deref;
 use std::ops::DerefMut;
+use std::sync::atomic::Ordering::SeqCst;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
@@ -27,7 +28,7 @@ impl<T> Slot<T> {
 
 pub struct Allocator<T> {
     storage: std::boxed::Box<[Slot<T>]>,
-    free: AtomicIsize,
+    free: std::sync::atomic::AtomicIsize,
 }
 
 impl<T> Allocator<T> {
@@ -45,27 +46,31 @@ impl<T> Allocator<T> {
 
         Self {
             storage,
-            free: AtomicIsize::new(0),
+            free: std::sync::atomic::AtomicIsize::new(0),
         }
     }
 
     #[track_caller]
     pub fn box_it(&self, value: T) -> Box<'_, T> {
         let Self { storage, free } = &self;
-        let index = free.load(SeqCst);
+        let mut index;
+        let mut slot_lock_result;
 
-        assert_ne!(INVALID_INDEX, index, "out of reserved memory");
+        while {
+            index = free.load(SeqCst);
+            assert_ne!(INVALID_INDEX, index, "out of reserved memory");
+            slot_lock_result = storage[index as usize].inner.try_lock();
+            slot_lock_result.is_err()
+        } {}
 
-        let mut slot_guard =
-            storage[index as usize].inner.try_lock();
+        let mut slot_guard = slot_lock_result.unwrap();
 
         let next_free = match slot_guard.deref() {
             SlotInner::Empty(n) => *n,
             SlotInner::Filled(_) => unreachable!(),
         };
 
-        *free_guard = next_free;
-        std::mem::drop(free_guard);
+        free.store(next_free, SeqCst);
         *slot_guard = SlotInner::Filled(value);
 
         Box {
@@ -78,7 +83,7 @@ impl<T> Allocator<T> {
 
 pub struct Box<'a, T> {
     inner: MutexGuard<'a, SlotInner<T>>,
-    free: &'a Mutex<isize>,
+    free: &'a std::sync::atomic::AtomicIsize,
     index: isize,
 }
 
@@ -104,12 +109,12 @@ impl<T> DerefMut for Box<'_, T> {
 
 impl<T> Drop for Box<'_, T> {
     fn drop(&mut self) {
-        let mut free_guard = match self.free.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => poisoned.into_inner(),
-        };
+        let Self { inner, free, index } = self;
 
-        *self.inner = SlotInner::Empty(*free_guard);
-        *free_guard = self.index;
+        free.fetch_update(SeqCst, SeqCst, |prev_index| {
+            **inner = SlotInner::Empty(prev_index);
+            Some(*index)
+        })
+        .unwrap();
     }
 }

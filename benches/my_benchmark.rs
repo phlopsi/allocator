@@ -52,7 +52,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
-    c.bench_function("safe::basic::std{17}", |b| {
+    let group = c.benchmark_group("safe::basic");
+
+    group.bench_function("safe::basic::std{17}", |b| {
         let a = allocator::safe::basic::std::Allocator::<i64>::new(17);
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
@@ -99,7 +101,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
-    c.bench_function("safe::basic::parking_lot{17}", |b| {
+    group.bench_function("safe::basic::parking_lot{17}", |b| {
         let a =
             allocator::safe::basic::parking_lot::Allocator::<i64>::new(
                 17,
@@ -149,7 +151,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
-    c.bench_function("safe::basic::simple_mutex{17}", |b| {
+    group.bench_function("safe::basic::simple_mutex{17}", |b| {
         let a =
             allocator::safe::basic::simple_mutex::Allocator::<i64>::new(
                 17,
@@ -199,7 +201,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
-    c.bench_function("safe::basic::antidote{17}", |b| {
+    group.bench_function("safe::basic::antidote{17}", |b| {
         let a =
             allocator::safe::basic::antidote::Allocator::<i64>::new(17);
         let repeat = std::sync::atomic::AtomicBool::new(true);
@@ -246,6 +248,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         })
         .unwrap();
     });
+
+    group.finish();
 
     c.bench_function("safe::advanced::v1{17}", |b| {
         let a =
@@ -298,6 +302,54 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("safe::advanced::v2{17}", |b| {
         let a =
             allocator::safe::advanced::v2::Allocator::<i64>::new(17);
+        let repeat = std::sync::atomic::AtomicBool::new(true);
+
+        cu::thread::scope(|s| {
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(0));
+                }
+            });
+
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(1));
+                }
+            });
+
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(2));
+                }
+            });
+
+            b.iter(|| {
+                (
+                    a.box_it(3),
+                    a.box_it(4),
+                    a.box_it(5),
+                    a.box_it(6),
+                    a.box_it(7),
+                    a.box_it(8),
+                    a.box_it(9),
+                    a.box_it(10),
+                    a.box_it(11),
+                    a.box_it(12),
+                    a.box_it(13),
+                    a.box_it(14),
+                    a.box_it(15),
+                    a.box_it(16),
+                )
+            });
+
+            repeat.store(false, Release);
+        })
+        .unwrap();
+    });
+
+    c.bench_function("safe::advanced::v3{17}", |b| {
+        let a =
+            allocator::safe::advanced::v3::Allocator::<i64>::new(17);
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
         cu::thread::scope(|s| {
