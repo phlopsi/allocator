@@ -252,7 +252,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     group.finish();
     let mut group = c.benchmark_group("safe::advanced");
 
-    c.bench_function("v1{17}", |b| {
+    group.bench_function("v1{17}", |b| {
         let a =
             allocator::safe::advanced::v1::Allocator::<i64>::new(17);
         let repeat = std::sync::atomic::AtomicBool::new(true);
