@@ -54,20 +54,16 @@ impl<T> Allocator<T> {
     pub fn box_it(&self, value: T) -> Box<'_, T> {
         let Self { storage, free } = &self;
         let mut index;
-        let mut slot_lock_result;
         let mut slot_guard;
 
         loop {
             index = free.load(SeqCst);
             assert_ne!(INVALID_INDEX, index, "out of reserved memory");
-            slot_lock_result = storage[index as usize].inner.try_lock();
 
-            match slot_lock_result {
-                Ok(guard) => {
-                    slot_guard = guard;
-                    break;
-                }
-                Err(_) => {}
+            if let Ok(guard) = storage[index as usize].inner.try_lock()
+            {
+                slot_guard = guard;
+                break;
             }
         }
 
@@ -115,12 +111,7 @@ impl<T> DerefMut for Box<'_, T> {
 
 impl<T> Drop for Box<'_, T> {
     fn drop(&mut self) {
-        let Self { inner, free, index } = self;
-
-        free.fetch_update(SeqCst, SeqCst, |prev_index| {
-            **inner = SlotInner::Empty(prev_index);
-            Some(*index)
-        })
-        .unwrap();
+        *self.inner =
+            SlotInner::Empty(self.free.swap(self.index, SeqCst));
     }
 }
