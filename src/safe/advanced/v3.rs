@@ -55,15 +55,21 @@ impl<T> Allocator<T> {
         let Self { storage, free } = &self;
         let mut index;
         let mut slot_lock_result;
+        let mut slot_guard;
 
-        while {
+        loop {
             index = free.load(SeqCst);
             assert_ne!(INVALID_INDEX, index, "out of reserved memory");
             slot_lock_result = storage[index as usize].inner.try_lock();
-            slot_lock_result.is_err()
-        } {}
 
-        let mut slot_guard = slot_lock_result.unwrap();
+            match slot_lock_result {
+                Ok(guard) => {
+                    slot_guard = guard;
+                    break;
+                }
+                Err(_) => {}
+            }
+        }
 
         let next_free = match slot_guard.deref() {
             SlotInner::Empty(n) => *n,

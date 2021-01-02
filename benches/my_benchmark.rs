@@ -54,7 +54,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("safe::basic");
 
-    group.bench_function("safe::basic::std{17}", |b| {
+    group.bench_function("std{17}", |b| {
         let a = allocator::safe::basic::std::Allocator::<i64>::new(17);
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
@@ -101,7 +101,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
-    group.bench_function("safe::basic::parking_lot{17}", |b| {
+    group.bench_function("parking_lot{17}", |b| {
         let a =
             allocator::safe::basic::parking_lot::Allocator::<i64>::new(
                 17,
@@ -151,7 +151,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
-    group.bench_function("safe::basic::simple_mutex{17}", |b| {
+    group.bench_function("simple_mutex{17}", |b| {
         let a =
             allocator::safe::basic::simple_mutex::Allocator::<i64>::new(
                 17,
@@ -201,7 +201,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
-    group.bench_function("safe::basic::antidote{17}", |b| {
+    group.bench_function("antidote{17}", |b| {
         let a =
             allocator::safe::basic::antidote::Allocator::<i64>::new(17);
         let repeat = std::sync::atomic::AtomicBool::new(true);
@@ -250,8 +250,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     });
 
     group.finish();
+    let mut group = c.benchmark_group("safe::advanced");
 
-    c.bench_function("safe::advanced::v1{17}", |b| {
+    c.bench_function("v1{17}", |b| {
         let a =
             allocator::safe::advanced::v1::Allocator::<i64>::new(17);
         let repeat = std::sync::atomic::AtomicBool::new(true);
@@ -299,7 +300,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
-    c.bench_function("safe::advanced::v2{17}", |b| {
+    group.bench_function("v2{17}", |b| {
         let a =
             allocator::safe::advanced::v2::Allocator::<i64>::new(17);
         let repeat = std::sync::atomic::AtomicBool::new(true);
@@ -347,7 +348,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
-    c.bench_function("safe::advanced::v3{17}", |b| {
+    group.bench_function("v3{17}", |b| {
         let a =
             allocator::safe::advanced::v3::Allocator::<i64>::new(17);
         let repeat = std::sync::atomic::AtomicBool::new(true);
@@ -394,6 +395,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         })
         .unwrap();
     });
+
+    group.finish();
 }
 
 criterion_group!(benches, criterion_benchmark);
