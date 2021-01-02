@@ -52,7 +52,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
-    let group = c.benchmark_group("safe::basic");
+    let mut group = c.benchmark_group("safe::basic");
 
     group.bench_function("safe::basic::std{17}", |b| {
         let a = allocator::safe::basic::std::Allocator::<i64>::new(17);
