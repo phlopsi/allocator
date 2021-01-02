@@ -13,6 +13,7 @@ antidote = "*"
 
 [dev-dependencies]
 criterion = "*"
+crossbeam-utils = "*"
 
 [[bench]]
 name = "my_benchmark"
