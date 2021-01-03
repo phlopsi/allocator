@@ -53,41 +53,46 @@ impl<T> Allocator<T> {
     #[track_caller]
     pub fn box_it(&self, value: T) -> Box<'_, T> {
         let Self { storage, free } = &self;
-        let mut index;
-        let mut slot_guard;
-        let mut count = 0;
 
         loop {
-            index = free.load(SeqCst);
-            assert_ne!(INVALID_INDEX, index, "out of reserved memory");
+            let index = free.load(SeqCst);
 
-            match storage[index as usize].inner.try_lock() {
-                Ok(guard) => {
-                    slot_guard = guard;
-                    break;
+            match storage
+                .get(index as usize)
+                .expect("out of reserved memory")
+                .inner
+                .try_lock()
+            {
+                Ok(mut guard) => {
+                    let next_free = match *guard {
+                        SlotInner::Empty(n) => n,
+                        SlotInner::Filled(_) => unreachable!(),
+                    };
+
+                    if free
+                        .compare_exchange_weak(
+                            index, next_free, SeqCst, SeqCst,
+                        )
+                        .is_ok()
+                    {
+                        *guard = SlotInner::Filled(value);
+
+                        return Box {
+                            free,
+                            index,
+                            inner: guard,
+                        };
+                    }
+
+                    std::sync::atomic::spin_loop_hint();
                 }
                 Err(std::sync::TryLockError::WouldBlock) => {
-                    count += 1;
-                    assert!(count < 100);
+                    std::thread::yield_now();
                 }
                 Err(std::sync::TryLockError::Poisoned(e)) => {
                     panic!("{}", e)
                 }
             }
-        }
-
-        let next_free = match slot_guard.deref() {
-            SlotInner::Empty(n) => *n,
-            SlotInner::Filled(_) => unreachable!(),
-        };
-
-        free.store(next_free, SeqCst);
-        *slot_guard = SlotInner::Filled(value);
-
-        Box {
-            free,
-            index,
-            inner: slot_guard,
         }
     }
 }
