@@ -6,7 +6,7 @@ use std::sync::atomic::Ordering::Acquire;
 use std::sync::atomic::Ordering::Release;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("box", |b| {
+    c.bench_function("box{4}", |b| {
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
         cu::thread::scope(|s| {
@@ -28,24 +28,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             });
 
-            b.iter(|| {
-                (
-                    Box::new(3),
-                    Box::new(4),
-                    Box::new(5),
-                    Box::new(6),
-                    Box::new(7),
-                    Box::new(8),
-                    Box::new(9),
-                    Box::new(10),
-                    Box::new(11),
-                    Box::new(12),
-                    Box::new(13),
-                    Box::new(14),
-                    Box::new(15),
-                    Box::new(16),
-                )
-            });
+            b.iter(|| Box::new(3));
 
             repeat.store(false, Release);
         })
@@ -54,8 +37,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("safe::basic");
 
-    group.bench_function("std{17}", |b| {
-        let a = allocator::safe::basic::std::Allocator::<i64>::new(17);
+    group.bench_function("std{4}", |b| {
+        let a = allocator::s::basic::std::Allocator::<i64>::new(4);
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
         cu::thread::scope(|s| {
@@ -77,35 +60,16 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             });
 
-            b.iter(|| {
-                (
-                    a.box_it(3),
-                    a.box_it(4),
-                    a.box_it(5),
-                    a.box_it(6),
-                    a.box_it(7),
-                    a.box_it(8),
-                    a.box_it(9),
-                    a.box_it(10),
-                    a.box_it(11),
-                    a.box_it(12),
-                    a.box_it(13),
-                    a.box_it(14),
-                    a.box_it(15),
-                    a.box_it(16),
-                )
-            });
+            b.iter(|| a.box_it(3));
 
             repeat.store(false, Release);
         })
         .unwrap();
     });
 
-    group.bench_function("parking_lot{17}", |b| {
+    group.bench_function("parking_lot{4}", |b| {
         let a =
-            allocator::safe::basic::parking_lot::Allocator::<i64>::new(
-                17,
-            );
+            allocator::s::basic::parking_lot::Allocator::<i64>::new(4);
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
         cu::thread::scope(|s| {
@@ -127,35 +91,16 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             });
 
-            b.iter(|| {
-                (
-                    a.box_it(3),
-                    a.box_it(4),
-                    a.box_it(5),
-                    a.box_it(6),
-                    a.box_it(7),
-                    a.box_it(8),
-                    a.box_it(9),
-                    a.box_it(10),
-                    a.box_it(11),
-                    a.box_it(12),
-                    a.box_it(13),
-                    a.box_it(14),
-                    a.box_it(15),
-                    a.box_it(16),
-                )
-            });
+            b.iter(|| a.box_it(3));
 
             repeat.store(false, Release);
         })
         .unwrap();
     });
 
-    group.bench_function("simple_mutex{17}", |b| {
+    group.bench_function("simple_mutex{4}", |b| {
         let a =
-            allocator::safe::basic::simple_mutex::Allocator::<i64>::new(
-                17,
-            );
+            allocator::s::basic::simple_mutex::Allocator::<i64>::new(4);
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
         cu::thread::scope(|s| {
@@ -177,33 +122,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             });
 
-            b.iter(|| {
-                (
-                    a.box_it(3),
-                    a.box_it(4),
-                    a.box_it(5),
-                    a.box_it(6),
-                    a.box_it(7),
-                    a.box_it(8),
-                    a.box_it(9),
-                    a.box_it(10),
-                    a.box_it(11),
-                    a.box_it(12),
-                    a.box_it(13),
-                    a.box_it(14),
-                    a.box_it(15),
-                    a.box_it(16),
-                )
-            });
+            b.iter(|| a.box_it(3));
 
             repeat.store(false, Release);
         })
         .unwrap();
     });
 
-    group.bench_function("antidote{17}", |b| {
-        let a =
-            allocator::safe::basic::antidote::Allocator::<i64>::new(17);
+    group.bench_function("antidote{4}", |b| {
+        let a = allocator::s::basic::antidote::Allocator::<i64>::new(4);
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
         cu::thread::scope(|s| {
@@ -225,24 +152,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             });
 
-            b.iter(|| {
-                (
-                    a.box_it(3),
-                    a.box_it(4),
-                    a.box_it(5),
-                    a.box_it(6),
-                    a.box_it(7),
-                    a.box_it(8),
-                    a.box_it(9),
-                    a.box_it(10),
-                    a.box_it(11),
-                    a.box_it(12),
-                    a.box_it(13),
-                    a.box_it(14),
-                    a.box_it(15),
-                    a.box_it(16),
-                )
-            });
+            b.iter(|| a.box_it(3));
 
             repeat.store(false, Release);
         })
@@ -252,9 +162,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     group.finish();
     let mut group = c.benchmark_group("safe::advanced");
 
-    group.bench_function("v1{17}", |b| {
-        let a =
-            allocator::safe::advanced::v1::Allocator::<i64>::new(17);
+    group.bench_function("v1{4}", |b| {
+        let a = allocator::s::advanced::v1::Allocator::<i64>::new(4);
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
         cu::thread::scope(|s| {
@@ -276,33 +185,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             });
 
-            b.iter(|| {
-                (
-                    a.box_it(3),
-                    a.box_it(4),
-                    a.box_it(5),
-                    a.box_it(6),
-                    a.box_it(7),
-                    a.box_it(8),
-                    a.box_it(9),
-                    a.box_it(10),
-                    a.box_it(11),
-                    a.box_it(12),
-                    a.box_it(13),
-                    a.box_it(14),
-                    a.box_it(15),
-                    a.box_it(16),
-                )
-            });
+            b.iter(|| a.box_it(3));
 
             repeat.store(false, Release);
         })
         .unwrap();
     });
 
-    group.bench_function("v2{17}", |b| {
-        let a =
-            allocator::safe::advanced::v2::Allocator::<i64>::new(17);
+    group.bench_function("v2{4}", |b| {
+        let a = allocator::s::advanced::v2::Allocator::<i64>::new(4);
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
         cu::thread::scope(|s| {
@@ -324,33 +215,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             });
 
-            b.iter(|| {
-                (
-                    a.box_it(3),
-                    a.box_it(4),
-                    a.box_it(5),
-                    a.box_it(6),
-                    a.box_it(7),
-                    a.box_it(8),
-                    a.box_it(9),
-                    a.box_it(10),
-                    a.box_it(11),
-                    a.box_it(12),
-                    a.box_it(13),
-                    a.box_it(14),
-                    a.box_it(15),
-                    a.box_it(16),
-                )
-            });
+            b.iter(|| a.box_it(3));
 
             repeat.store(false, Release);
         })
         .unwrap();
     });
 
-    group.bench_function("v3{17}", |b| {
-        let a =
-            allocator::safe::advanced::v3::Allocator::<i64>::new(17);
+    group.bench_function("v3{4}", |b| {
+        let a = allocator::s::advanced::v3::Allocator::<i64>::new(4);
         let repeat = std::sync::atomic::AtomicBool::new(true);
 
         cu::thread::scope(|s| {
@@ -372,24 +245,70 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             });
 
-            b.iter(|| {
-                std::mem::drop((
-                    a.box_it(3),
-                    a.box_it(4),
-                    a.box_it(5),
-                    a.box_it(6),
-                    a.box_it(7),
-                    a.box_it(8),
-                    a.box_it(9),
-                    a.box_it(10),
-                    a.box_it(11),
-                    a.box_it(12),
-                    a.box_it(13),
-                    a.box_it(14),
-                    a.box_it(15),
-                    a.box_it(16),
-                ));
+            b.iter(|| a.box_it(3));
+
+            repeat.store(false, Release);
+        })
+        .unwrap();
+    });
+
+    group.finish();
+    let mut group = c.benchmark_group("unsafe");
+
+    group.bench_function("v1{4}", |b| {
+        let a = allocator::u::v1::Allocator::<i64>::new(4);
+        let repeat = std::sync::atomic::AtomicBool::new(true);
+
+        cu::thread::scope(|s| {
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(0));
+                }
             });
+
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(1));
+                }
+            });
+
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(2));
+                }
+            });
+
+            b.iter(|| a.box_it(3));
+
+            repeat.store(false, Release);
+        })
+        .unwrap();
+    });
+
+    group.bench_function("v2{4}", |b| {
+        let a = allocator::u::v2::Allocator::<i64>::new(4);
+        let repeat = std::sync::atomic::AtomicBool::new(true);
+
+        cu::thread::scope(|s| {
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(0));
+                }
+            });
+
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(1));
+                }
+            });
+
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(2));
+                }
+            });
+
+            b.iter(|| a.box_it(3));
 
             repeat.store(false, Release);
         })

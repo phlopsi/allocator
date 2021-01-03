@@ -3,7 +3,7 @@ mod tests;
 
 use std::ops::Deref;
 use std::ops::DerefMut;
-use std::sync::atomic::Ordering::SeqCst;
+use std::sync::atomic::Ordering::{AcqRel, Acquire, Release, SeqCst};
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
@@ -55,7 +55,7 @@ impl<T> Allocator<T> {
         let Self { storage, free } = &self;
 
         loop {
-            let index = free.load(SeqCst);
+            let index = free.load(Acquire);
 
             match storage
                 .get(index as usize)
@@ -71,7 +71,7 @@ impl<T> Allocator<T> {
 
                     if free
                         .compare_exchange_weak(
-                            index, next_free, SeqCst, SeqCst,
+                            index, next_free, AcqRel, Acquire,
                         )
                         .is_ok()
                     {
@@ -126,6 +126,6 @@ impl<T> DerefMut for Box<'_, T> {
 impl<T> Drop for Box<'_, T> {
     fn drop(&mut self) {
         *self.inner =
-            SlotInner::Empty(self.free.swap(self.index, SeqCst));
+            SlotInner::Empty(self.free.swap(self.index, AcqRel));
     }
 }
