@@ -95,10 +95,23 @@ impl<T> Allocator<T> {
     }
 
     unsafe fn deallocate(&self, index: usize) {
-        let free = self.free.load(SeqCst);
-        self.storage.get_unchecked(index).next.store(free, SeqCst);
-        // exchange or compare-exchange?
-        todo!();
+        let mut head = self.free.load(SeqCst);
+
+        loop {
+            self.storage.get_unchecked(index).next.store(head, SeqCst);
+
+            match self.free.compare_exchange_weak(
+                head,
+                index as isize,
+                SeqCst,
+                SeqCst,
+            ) {
+                Ok(_) => break,
+                Err(new_head) => {
+                    head = new_head;
+                }
+            }
+        }
     }
 
     unsafe fn drop_in_place(&self, index: usize) {
