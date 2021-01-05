@@ -1,0 +1,75 @@
+type A218   = Align128
+type AIsize = AtomicIsize
+type UC     = UnsafeCell
+type MU     = MaybeUninit
+
+_0 = Allocator {
+	storage: Box([
+			0 => Slot { next: A128(AIsize( 1)), data: UC(MU::uninit), }
+			1 => Slot { next: A128(AIsize( 2)), data: UC(MU::uninit), }
+			2 => Slot { next: A128(AIsize( 3)), data: UC(MU::uninit), }
+			3 => Slot { next: A128(AIsize(-1)), data: UC(MU::uninit), }
+		]),
+	free: AIsize(0)
+}
+
+########################################################################
+
+#### t0 # let mut head = self.free.load(SeqCst);
+	head = 0
+
+#### t0 # let slot = self.storage.get(head as usize).expect("out of reserved memory");
+	head = 0
+	slot = &Slot { next: A128(AIsize(1)), data: UC(MU::uninit), }
+
+#### t0 # let next = slot.next.load(SeqCst);
+	head = 0
+	slot = &Slot { next: A128(AIsize(1)), data: UC(MU::uninit), }
+	next = 1
+
+#### t0 # match self.free.compare_exchange_weak(head, next, SeqCst, SeqCst)
+	-> Ok(0)
+	head = 0
+	slot = &Slot { next: A128(AIsize(1)), data: UC(MU::uninit), }
+	next = 1
+
+#### t0 # unsafe { &mut *slot.data.get() }.write(value)
+	head = 0
+	slot = &Slot { next: A128(AIsize(1)), data: UC(MU::value), }
+	next = 1
+
+########################################################################
+
+_0 = Allocator {
+	storage: Box([
+			0 => Slot { next: A128(AIsize( 1)), data: UC(MU::value ), }
+			1 => Slot { next: A128(AIsize( 2)), data: UC(MU::uninit), }
+			2 => Slot { next: A128(AIsize( 3)), data: UC(MU::uninit), }
+			3 => Slot { next: A128(AIsize(-1)), data: UC(MU::uninit), }
+		]),
+	free: AIsize(1)
+}
+
+_1 = Box {
+    allocator: &_0,
+    index: 0,
+}
+
+########################################################################
+
+#### t0 # let mut head = self.free.load(SeqCst)
+	head = 1
+
+#### t0 # self.storage.get_unchecked(index).next.store(head, SeqCst)
+	head = 1
+	_0 = {
+		storage: Box([
+				0 => Slot { next: A128(AIsize( 1)), data: UC(MU::uninit), }
+				1 => Slot { next: A128(AIsize( 2)), data: UC(MU::uninit), }
+				2 => Slot { next: A128(AIsize( 3)), data: UC(MU::uninit), }
+				3 => Slot { next: A128(AIsize(-1)), data: UC(MU::uninit), }
+			]),
+		free: AIsize(1)
+	}
+
+#### t0 # self.free.compare_exchange_weak(head, index as isize, SeqCst, SeqCst)

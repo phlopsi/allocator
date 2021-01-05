@@ -1,3 +1,4 @@
+#[derive(Debug)]
 #[repr(align(128))]
 pub struct Align128<T>(pub T);
 

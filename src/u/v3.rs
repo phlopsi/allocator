@@ -5,6 +5,7 @@ mod tests;
 
 use crate::align128::Align128;
 use std::cell::UnsafeCell;
+use std::fmt::Debug;
 use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::ops::DerefMut;
@@ -13,6 +14,7 @@ use std::sync::atomic::Ordering::{AcqRel, Acquire, Release, SeqCst};
 
 const INVALID_INDEX: isize = -1;
 
+#[derive(Debug)]
 struct Slot<T> {
     next: Align128<AtomicIsize>,
     data: UnsafeCell<MaybeUninit<T>>,
@@ -27,12 +29,15 @@ impl<T> Slot<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct Allocator<T> {
     storage: std::boxed::Box<[Slot<T>]>,
     free: AtomicIsize,
 }
 
-impl<T> Allocator<T> {
+unsafe impl<T: Debug> Sync for Allocator<T> {}
+
+impl<T: Debug> Allocator<T> {
     pub fn new(capacity: usize) -> Self {
         assert!(1 <= capacity, capacity <= (isize::MAX as usize));
         let mut storage = Vec::with_capacity(capacity);
@@ -56,10 +61,13 @@ impl<T> Allocator<T> {
         let mut head = self.free.load(SeqCst);
 
         loop {
-            let slot = self
-                .storage
-                .get(head as usize)
-                .expect("out of reserved memory");
+            let slot = match self.storage.get(head as usize) {
+                Some(s) => s,
+                None => {
+                    dbg!(head, &self);
+                    panic!("out of reserved memory")
+                }
+            };
 
             let next = slot.next.load(SeqCst);
 
@@ -68,6 +76,8 @@ impl<T> Allocator<T> {
                 .compare_exchange_weak(head, next, SeqCst, SeqCst)
             {
                 Ok(head) => {
+                    // for debugging
+                    slot.next.store(-2, SeqCst);
                     unsafe { &mut *slot.data.get() }.write(value);
 
                     return Box {
@@ -120,12 +130,12 @@ impl<T> Allocator<T> {
     }
 }
 
-pub struct Box<'a, T> {
+pub struct Box<'a, T: Debug> {
     allocator: &'a Allocator<T>,
     index: usize,
 }
 
-impl<T> Deref for Box<'_, T> {
+impl<T: Debug> Deref for Box<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -133,13 +143,13 @@ impl<T> Deref for Box<'_, T> {
     }
 }
 
-impl<T> DerefMut for Box<'_, T> {
+impl<T: Debug> DerefMut for Box<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { self.allocator.get_mut(self.index) }
     }
 }
 
-impl<T> Drop for Box<'_, T> {
+impl<T: Debug> Drop for Box<'_, T> {
     fn drop(&mut self) {
         unsafe { self.allocator.drop_in_place(self.index) };
         unsafe { self.allocator.deallocate(self.index) };
