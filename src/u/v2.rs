@@ -99,12 +99,12 @@ impl<T> Box<'_, T> {
     }
 
     unsafe fn slot_inner(&self) -> &SlotInner<T> {
-        unsafe { &*(self.slot().inner.get() as *const _) }
+        &*(self.slot().inner.get() as *const _)
     }
 
     #[allow(clippy::mut_from_ref)]
     unsafe fn slot_inner_mut(&self) -> &mut SlotInner<T> {
-        unsafe { &mut *self.slot().inner.get() }
+        &mut *self.slot().inner.get()
     }
 }
 
