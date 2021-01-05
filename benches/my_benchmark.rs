@@ -315,6 +315,36 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         .unwrap();
     });
 
+    group.bench_function("v3{4}", |b| {
+        let a = allocator::u::v3::Allocator::<i64>::new(4);
+        let repeat = std::sync::atomic::AtomicBool::new(true);
+
+        cu::thread::scope(|s| {
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(0));
+                }
+            });
+
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(1));
+                }
+            });
+
+            s.spawn(|_| {
+                while repeat.load(Acquire) {
+                    std::mem::drop(a.box_it(2));
+                }
+            });
+
+            b.iter(|| a.box_it(3));
+
+            repeat.store(false, Release);
+        })
+        .unwrap();
+    });
+
     group.finish();
 }
 
