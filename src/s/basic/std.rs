@@ -1,13 +1,14 @@
 #[cfg(test)]
 mod tests;
 
+use crate::align128::Align128;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
 pub struct Allocator<T> {
-    storage: std::boxed::Box<[Mutex<Option<T>>]>,
+    storage: std::boxed::Box<[Align128<Mutex<Option<T>>>]>,
 }
 
 impl<T> Allocator<T> {

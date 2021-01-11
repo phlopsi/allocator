@@ -12,7 +12,7 @@ use std::ops::DerefMut;
 use std::sync::atomic::AtomicIsize;
 use std::sync::atomic::Ordering::{AcqRel, Acquire, Release, SeqCst};
 
-const INVALID_INDEX: isize = -1;
+const INVALID_INDEX: isize = isize::MAX;
 
 #[derive(Debug)]
 struct Slot<T> {
@@ -39,7 +39,7 @@ unsafe impl<T: Debug> Sync for Allocator<T> {}
 
 impl<T: Debug> Allocator<T> {
     pub fn new(capacity: usize) -> Self {
-        assert!(1 <= capacity, capacity <= (isize::MAX as usize));
+        assert!(1 <= capacity, capacity < (isize::MAX as usize));
         let mut storage = Vec::with_capacity(capacity);
 
         for next in 1..capacity {
@@ -70,6 +70,8 @@ impl<T: Debug> Allocator<T> {
             };
 
             let next = slot.next.load(SeqCst);
+
+			
 
             match self
                 .free

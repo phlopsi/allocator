@@ -1,3 +1,4 @@
+#![feature(thread_id_value)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_extra)]
 
